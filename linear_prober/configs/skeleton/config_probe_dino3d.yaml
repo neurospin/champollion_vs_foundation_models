@@ -1,0 +1,157 @@
+# 3DINO-ViT (ViT-Large, 112^3) — skeleton modality config.
+#
+# Linear probing:
+#   python scripts/run_probe.py --modality skeleton \
+#     --config configs/skeleton/config_probe_dino3d.yaml \
+#     --roi ofc --preprocessing upscale_pad
+#
+# The `flatten` mode first needs a UKBB PCA fit (scripts/fit_pca.py);
+# the per-ROI intensity mapping can be searched with scripts/normalizer_search.py.
+#
+# Preprocessing choices: upscale_pad | nearest_neighbors | trilinear
+
+# =============================================================================
+# Model identity
+# =============================================================================
+experiment:
+  model: "dino3d"
+
+  # Used by the standard full linear-probing pipeline only.
+  # The normalizer grid search ignores this value and uses the per-checkpoint
+  # output_model_name values declared under normalizer_search.checkpoints.
+  output_model_name: "dino3d"
+
+
+# =============================================================================
+# Repository — added to sys.path for `from dinov2.* import ...`
+# =============================================================================
+repositories:
+  3dino: "/path/to/3DINO/"
+
+
+# =============================================================================
+# Paths — point these at your local checkpoint and output directory.
+# =============================================================================
+paths:
+  checkpoint_path: "/path/to/3DINO/weights/3dino_vit_weights.pth"
+  output_root:     "/path/to/outputs"
+
+
+# =============================================================================
+# Model normalisation range — intrinsic property of 3DINO
+# =============================================================================
+# Used by scripts/normalizer_search.py to express (p0, p1) as percentages
+# of [alpha, beta]. Must match linear_prober/skeleton/models/dino3d/normalizer.py -> MODEL_RANGE.
+#
+#   3DINO     -> [-1.0, 1.0]
+#   SAM-Med3D -> [ 0.0, 1.0]
+#   VISTA3D   -> [ 0.0, 1.0]  (to verify)
+# =============================================================================
+model_normalization:
+  range: [-1.0, 1.0]
+
+
+# =============================================================================
+# Normalizer grid search — MULTI-CHECKPOINT section
+# =============================================================================
+# Generates all valid (p0, p1) couples with p0 < p1 over [0, 1]^2.
+#
+#   grid_step: 0.1  ->  55 valid couples
+#   grid_step: 0.05 -> 210 valid couples
+#
+# Only mean_pool features are extracted during this search.
+#
+# For every checkpoint below, results are written to:
+#   outputs/{output_model_name}/{roi}/{preprocessing}/normalizer_search/
+#
+# best_mapping.csv contains the top_k mappings ranked ONLY by decreasing
+# cv_mean_score, with the corresponding held-out test_score reported alongside.
+# The test score is never used for selection or tie-breaking.
+# =============================================================================
+normalizer_search:
+  grid_step: 0.1
+  top_k: 5
+
+  checkpoints:
+    - name: "zero_shot"
+      checkpoint_path: "/path/to/3DINO/weights/3dino_vit_weights.pth"
+      output_model_name: "dino3d_zero_shot"
+
+
+
+# =============================================================================
+# Optimal mapping — used by the standard full linear-probing scripts
+# =============================================================================
+# Fill these values after inspecting the multi-checkpoint normalizer search.
+# null -> fallback to the full model range: p0=0.0, p1=1.0.
+# =============================================================================
+optimal_mapping:
+  ofc: {p0: null, p1: null}
+  fip: {p0: null, p1: null}
+  lc:  {p0: 0.0, p1: 1.0}
+  sc:  {p0: null, p1: null}
+
+
+# =============================================================================
+# Feature extraction — architecture fixed at 112^3
+# =============================================================================
+feature_extraction:
+  target_shape: [112, 112, 112]
+  batch_size:   8
+  num_workers:  4
+  device:       "cuda"
+
+
+# =============================================================================
+# ROI-specific settings — selected at runtime via --roi ofc|fip|lc|sc
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:        "classification"
+    n_classes:        4
+    hcp_volumes_native:    "/path/to/data/ofc_hcp/volumes_native_ofc.npy"
+    hcp_master_table:      "/path/to/data/ofc_hcp/master_table_ofc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_ofc_skeletons.npy"
+
+  fip:
+    task_type:        "classification"
+    n_classes:        2
+    hcp_volumes_native:    "/path/to/data/fip_hcp/volumes_native_fip.npy"
+    hcp_master_table:      "/path/to/data/fip_hcp/master_table_fip.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_fip_skeletons.npy"
+
+  lc:
+    task_type:        "classification"
+    n_classes:        2
+    hcp_volumes_native:    "/path/to/data/lc_acc/volumes_native_lc.npy"
+    hcp_master_table:      "/path/to/data/lc_acc/master_table_lc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_lc_skeletons.npy"
+
+  sc:
+    task_type:        "regression"
+    n_classes:        null
+    hcp_volumes_native:    "/path/to/data/sc_hcp/volumes_native_sc.npy"
+    hcp_master_table:      "/path/to/data/sc_hcp/master_table_sc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_sc_skeletons.npy"
+
+
+# =============================================================================
+# Probe hyperparameters — shared across all ROIs
+# =============================================================================
+probe:
+  n_folds:           5
+  n_components_list: [32, 128, 256, 512, 1024, 2048, 4096, 8192]
+
+  # Standard classification (OFC, FIP, LC) — LogisticRegression over this C grid.
+  classifier: "logreg"
+  C:          [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  # Standard regression (SC)
+  alpha: [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # flatten_raw high-dimensional probing
+  flatten_raw_alpha: [1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # Normalizer-search LogisticRegression grid
+  normalizer_search_C: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]

@@ -1,0 +1,83 @@
+# config_probe_bsf.yaml
+# BrainSegFounder SSLHead SwinViT — OFC (4-class), FIP (binary), SC (6D regression)
+#
+# Usage:
+#   python scripts/run_probe.py --config configs/config_probe_bsf.yaml
+#   python scripts/run_probe.py --config configs/config_probe_bsf.yaml
+#   python scripts/run_probe.py  --config configs/config_probe_bsf.yaml
+#
+# Preprocessing: native BSF passthrough (hardcoded in extract_features.py)
+#   ScaleIntensityRanged(a_min=-1000, a_max=1000, b_min=0.0, b_max=1.0, clip=True)
+#   → affine normalization to [0,1], no per-subject statistics.
+#   Our crops are already float32 ∈ [0,1] after clip q99 → passthrough.
+#   No resize needed: window96 is already at 96³.
+
+# =============================================================================
+# Model identity
+# =============================================================================
+experiment:
+  model: "bsf"
+
+# =============================================================================
+# Repository — added to sys.path for `from pretrain.models.ssl_head import SSLHead`
+# =============================================================================
+repositories:
+  bsf: "/path/to/BrainSegFounder"
+
+# =============================================================================
+# Paths
+# =============================================================================
+paths:
+  checkpoint_path: "/path/to/brainsegfounder_weights/model_weights_UKB-pretrain.pt"
+  output_root:     "/path/to/outputs"
+
+# =============================================================================
+# Feature extraction
+# SwinViT lighter than SAM-Med3D — batch_size=4 safe on A40
+# Uses window96 (not window128)
+# =============================================================================
+feature_extraction:
+  batch_size: 4
+  device:     "cuda"
+
+# =============================================================================
+# ROI-specific settings
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:    "classification"
+    n_classes:    4
+    crop_dir:     "/path/to/mri_preproc_hcp/crop_mni09c_1mm"
+    roi_dirname:  "OFC"
+    master_table: "/path/to/data/ofc_hcp/master_table_ofc.csv"
+
+  fip:
+    task_type:    "classification"
+    n_classes:    2
+    crop_dir:     "/path/to/mri_preproc_hcp/crop_mni09c_1mm"
+    roi_dirname:  "FIP"
+    master_table: "/path/to/data/fip_hcp/master_table_fip.csv"
+
+  sc:
+    task_type:    "regression"
+    n_classes:    null
+    crop_dir:     "/path/to/mri_preproc_hcp/crop_mni09c_1mm"
+    roi_dirname:  "Central"
+    master_table: "/path/to/data/sc_hcp/master_table_sc.csv"
+
+# =============================================================================
+# Probe hyperparameters
+# =============================================================================
+probe:
+  n_folds: 5
+
+  # LogisticRegression L2 — mean_pool / mean_pool_multi_layers
+  C: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  # Ridge regression — SC (all modes)
+  alpha: [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # RidgeClassifier / Ridge — flatten (D >> N regime)
+  # BSF flatten dim = 768 × 3 × 3 × 3 = 20,736
+  flatten_raw_alpha: [1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]

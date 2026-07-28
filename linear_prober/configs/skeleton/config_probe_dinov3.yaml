@@ -1,0 +1,115 @@
+# config_probe_dinov3.yaml
+#
+# Configuration for DINOv3 zero-shot linear probing pipeline.
+#
+# Key differences vs other model configs:
+#   - checkpoint_path: root directory (model_size appended by probe scripts)
+#   - No optimal_mapping: resolve_mapping falls back to (p0=0, p1=1) = identity
+#   - Three separate hparam grids: logreg / ridgeclassifier / ridge
+#   - slice_batch_size: controls GPU memory for DINOv3 forward pass
+#   - No repositories section: model loaded via HuggingFace local_files_only
+#
+# CLI args (not in config — vary per job):
+#   --preprocessing  upscale_pad | trilinear | nearest_neighbors
+#   --model_size     vits16 | vits16plus | vitb16 | vitl16 | vith16plus | vit7b16
+#   --slicer_mode    2d | 25d
+#   --extraction     mean_pool | flatten
+#   --aggregation    mean_pool_axis | concat_all
+#
+# Classifier selection (handled automatically by probe scripts):
+#   mean_pool + mean_pool_axis → LogisticRegression L2 lbfgs (probe.logreg.C)
+#   all other combinations     → RidgeClassifier              (probe.ridgeclassifier.alpha)
+#   SC regression (all modes)  → Ridge                        (probe.ridge.alpha)
+# =============================================================================
+
+experiment:
+  model: "dinov3"
+
+# =============================================================================
+# Paths
+# =============================================================================
+paths:
+  # Root directory containing per-model-size subdirectories:
+  #   dinov3_weights/
+  #     vits16/       ← downloaded via huggingface-cli
+  #     vitb16/
+  #     vitl16/
+  #     ...
+  # Probe scripts build: checkpoint_path / model_size
+  checkpoint_path: "/path/to/dinov3_weights"
+  output_root:     "/path/to/outputs"
+
+# =============================================================================
+# Model normalization
+# =============================================================================
+# MODEL_RANGE for DINOv3: binary volumes {0,1} live in [0.0, 1.0]
+# resolve_mapping falls back to (p0=0.0, p1=1.0) → v0=0.0, v1=1.0 (identity)
+# normalize_affine is then a no-op; only normalize_imagenet applies.
+model_normalization:
+  range: [0.0, 1.0]
+
+# =============================================================================
+# Feature extraction
+# =============================================================================
+feature_extraction:
+  target_shape:     [224, 224, 224]   # cubic — preprocessor.py handles all modes
+  batch_size:       32                 # 3D volumes per DataLoader batch
+  slice_batch_size: 16384                # 2D slices per DINOv3 forward pass (GPU memory)
+  num_workers:      4
+  device:           "cuda"
+  density_weighting: false   # true → w_i = d_i / d_max per-slice weighting
+
+# =============================================================================
+# Linear probing hparam grids
+# =============================================================================
+probe:
+  n_folds:          5
+  n_components_list: [32, 128, 256, 512, 1024, 2048, 4096, 8192]
+
+  # LogisticRegression L2 lbfgs
+  # Used for: OFC/FIP/LC with mean_pool + mean_pool_axis
+  logreg:
+    C: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  # RidgeClassifier
+  # Used for: OFC/FIP/LC with all other extraction+aggregation combinations
+  ridgeclassifier:
+    alpha: [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # Ridge regression
+  # Used for: SC (all modes) — 6D regression
+  ridge:
+    alpha: [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+# =============================================================================
+# ROIs
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:   "classification"
+    n_classes:   4
+    hcp_volumes_native:   "/path/to/data/ofc_hcp/volumes_native_ofc.npy"
+    hcp_master_table:     "/path/to/data/ofc_hcp/master_table_ofc.csv"
+    ukbb_volumes_native:  "/path/to/data/ofc_hcp/ukbb_volumes_native_ofc.npy"
+
+  fip:
+    task_type:   "classification"
+    n_classes:   2
+    hcp_volumes_native:   "/path/to/data/fip_hcp/volumes_native_fip.npy"
+    hcp_master_table:     "/path/to/data/fip_hcp/master_table_fip.csv"
+    ukbb_volumes_native:  "/path/to/data/fip_hcp/ukbb_volumes_native_fip.npy"
+
+  lc:
+    task_type:   "classification"
+    n_classes:   2
+    hcp_volumes_native:   "/path/to/data/lc_acc/volumes_native_lc.npy"
+    hcp_master_table:     "/path/to/data/lc_acc/master_table_lc.csv"
+    ukbb_volumes_native:  "/path/to/data/lc_acc/ukbb_volumes_native_lc.npy"
+
+  sc:
+    task_type:   "regression"
+    n_classes:   null
+    hcp_volumes_native:   "/path/to/data/sc_hcp/volumes_native_sc.npy"
+    hcp_master_table:     "/path/to/data/sc_hcp/master_table_sc.csv"
+    ukbb_volumes_native:  "/path/to/data/sc_hcp/ukbb_volumes_native_sc.npy"

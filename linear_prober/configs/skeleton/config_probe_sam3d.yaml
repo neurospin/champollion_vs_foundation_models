@@ -1,0 +1,158 @@
+# config_probe_sam3d.yaml
+# SAM-Med3D vit_b_ori — all 4 ROIs × all preprocessings
+#
+# Usage:
+#   python scripts/fit_pca.py       --config configs/config_probe_sam3d.yaml --roi fip --preprocessing upscale_pad
+#   python scripts/run_probe.py      --config configs/config_probe_sam3d.yaml --roi fip --preprocessing upscale_pad
+#   python scripts/run_probe.py         --config configs/config_probe_sam3d.yaml --roi ofc --preprocessing nearest_neighbors
+#   python scripts/run_probe.py      --config configs/config_probe_sam3d.yaml --roi fip --preprocessing upscale_pad --flatten-raw
+#   python scripts/normalizer_search.py   --config configs/config_probe_sam3d.yaml --roi fip --preprocessing upscale_pad
+#   python scripts/normalizer_search.py   --config configs/config_probe_sam3d.yaml --preprocessing upscale_pad  # all ROIs
+#
+# Preprocessing choices:
+#   Online  (computed on-the-fly): upscale_pad | nearest_neighbors | trilinear
+
+# =============================================================================
+# Model identity
+# =============================================================================
+experiment:
+  model: "sam3d"
+
+# =============================================================================
+# Repository — added to sys.path for `from segment_anything.* import ...`
+# =============================================================================
+repositories:
+  sam3d: "/path/to/SAM-Med3D/"
+
+# =============================================================================
+# Model-level paths — identical for all ROIs
+# =============================================================================
+paths:
+  checkpoint_path: "/path/to/SAM-Med3D/ckpt/sam_med3d_turbo.pth"
+  output_root:     "/path/to/outputs"
+
+# =============================================================================
+# Model normalisation range — intrinsic property of SAM-Med3D
+#
+# Convention: range is expressed in the INPUT space BEFORE the fixed SAM-Med3D
+# normalisation pipeline. p0/p1 percentages therefore have the same meaning as
+# for 3DINO: 0% = background voxel, 100% = active voxel.
+#
+# The actual normalisation applied by models/sam3d/normalizer.py is:
+#   step 1 — optimal mapping  : x ∈ {0,1} → {v0, v1}  with v0,v1 ∈ [0,1]
+#   step 2 — rescale to [0,255]: x = x * 255
+#   step 3 — fixed SAM-Med3D normalisation:
+#               x = (x - pixel_mean) / pixel_std
+#             with pixel_mean = 123.675, pixel_std = 58.395  (channel 0 of vit_b_ori)
+#   → final range after step 3:
+#       background voxel (v0=0.0): (0   - 123.675) / 58.395 = -2.116
+#       active voxel     (v1=1.0): (255 - 123.675) / 58.395 = +2.247
+#
+# Other models for reference:
+#   3DINO   → [-1.0,  1.0]   (ScaleIntensityRangePercentilesd b_min=-1 b_max=1)
+#   VISTA3D → [ 0.0,  1.0]   (to verify)
+# =============================================================================
+model_normalization:
+  range: [0.0, 1.0]
+
+# =============================================================================
+# Optimal mapping — fixed after scripts/normalizer_search.py exploration
+#
+# Workflow:
+#   1. Run scripts/normalizer_search.py → read best_mapping.csv per ROI
+#   2. Fill p0/p1 below from best_cv or best_test (your choice)
+#   3. All probe scripts call resolve_mapping(config, roi) → (v0, v1)
+#      passed to normalize(volume, v0, v1) instead of default [0.0, 1.0]
+#
+# p0, p1 : percentages in [0, 1] of model_normalization.range  (p0 < p1)
+# v0, v1 derived automatically:
+#   v0 = 0.0 + p0 * (1.0 - 0.0) = p0
+#   v1 = 0.0 + p1 * (1.0 - 0.0) = p1
+#
+# Example: p0=0.1, p1=0.9 → v0=0.1, v1=0.9
+#   → background: (0.1*255 - 123.675)/58.395 = -1.679
+#   → active:     (0.9*255 - 123.675)/58.395 = +1.809
+#
+# null → fallback to full model range (p0=0.0, p1=1.0)
+# =============================================================================
+optimal_mapping:
+  ofc: {p0: 0.5, p1: 0.6}   # best_cv — cohérent (cv=0.655, test=0.649)
+  fip: {p0: 0.0, p1: 1.0}   # best_cv — best_test trop suspect (test=0.767 avec cv=0.615)
+  lc:  {p0: 0.0, p1: 1.0}   # best_test — best_cv instable (cv=0.571, test=0.533)
+  sc:  {p0: 0.1, p1: 0.2}   # best_cv — cohérent
+
+
+# =============================================================================
+# Feature extraction — identical for all ROIs (architecture fixed at 128³)
+# =============================================================================
+feature_extraction:
+  target_shape: [128, 128, 128]   # SAM-Med3D vit_b_ori input size (≠ 112 for 3DINO)
+  batch_size:   1                  # SAM-Med3D is heavier — keep batch_size=1
+  num_workers:  4
+  device:       "cuda"
+
+# =============================================================================
+# Normalizer grid search — hyperparameter of the search, not of the model
+# Generates all (p0, p1) couples with p0 < p1 over [0, 1]² at given step.
+#   grid_step: 0.1  →  55 valid couples   (recommended default)
+#   grid_step: 0.05 → 210 valid couples   (finer, ~4× more forward passes)
+# Only mean_pool (384-D) is used — fastest mode, sufficient for mapping search.
+# =============================================================================
+normalizer_search:
+  grid_step: 0.1
+
+# =============================================================================
+# ROI-specific settings — selected at runtime via --roi ofc|fip|lc|sc
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:        "classification"
+    n_classes:        4
+    hcp_volumes_native:    "/path/to/data/ofc_hcp/volumes_native_ofc.npy"
+    hcp_master_table:      "/path/to/data/ofc_hcp/master_table_ofc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_ofc_skeletons.npy"
+
+  fip:
+    task_type:        "classification"
+    n_classes:        2
+    hcp_volumes_native:    "/path/to/data/fip_hcp/volumes_native_fip.npy"
+    hcp_master_table:      "/path/to/data/fip_hcp/master_table_fip.csv"    
+    ukbb_volumes_native:   "/path/to/ukbb_fip_skeletons.npy"
+
+  lc:
+    task_type:        "classification"
+    n_classes:        2
+    hcp_volumes_native:    "/path/to/data/lc_acc/volumes_native_lc.npy"
+    hcp_master_table:      "/path/to/data/lc_acc/master_table_lc.csv"    
+    ukbb_volumes_native:   "/path/to/ukbb_lc_skeletons.npy"
+
+  sc:
+    task_type:        "regression"
+    n_classes:        null
+    hcp_volumes_native:    "/path/to/data/sc_hcp/volumes_native_sc.npy"
+    hcp_master_table:      "/path/to/data/sc_hcp/master_table_sc.csv"    
+    ukbb_volumes_native:   "/path/to/ukbb_sc_skeletons.npy"
+
+# =============================================================================
+# Probe hyperparameters — shared across all ROIs
+# =============================================================================
+probe:
+  n_folds:           5
+  n_components_list: [32, 128, 256, 512, 1024, 2048, 4096, 8192]
+
+  # ── Standard classification (OFC, FIP, LC) ─────────────────────────────────
+  classifier: "logreg"
+  C:          [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  # ── Standard regression (SC only) ──────────────────────────────────────────
+  alpha:      [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # ── flatten_raw — high-dimensional regime (D ≈ 196,608) ────────────────────
+  # SAM-Med3D flatten dim = 384 × 512 = 196,608  (vs 352,256 for 3DINO)
+  # D >> N regime — same alpha range as 3DINO flatten_raw
+  flatten_raw_alpha: [1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # ── normalizer_search — hparam grid for LogReg used in mapping search
+  # Features are 384-D (mean_pool only) — same C range as standard classification
+  normalizer_search_C: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]

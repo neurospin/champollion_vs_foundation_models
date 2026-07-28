@@ -1,0 +1,83 @@
+# config_probe_dinov3.yaml
+# DINOv3 ViT — OFC (4-class), FIP (binary), SC (6D regression)
+#
+# Usage:
+#   python scripts/run_probe.py --modality mri \
+#       --config configs/mri/config_probe_dinov3.yaml --roi ofc
+#
+# Preprocessing: native DINOv3 IRM (hardcoded in extract_features.py)
+#   1. Center-crop window128 → 112³  (margin=8, no interpolation)
+#   2. normalize_imagenet on each 2D slice (mean/std ImageNet LVD-1689M)
+#
+# checkpoint_path: root directory containing one subdirectory per model_size
+#   dinov3_weights/
+#     vits16/    ← downloaded via huggingface-cli
+#     vitb16/
+#     vitl16/
+#     ...
+# Probe scripts append /model_size at runtime.
+
+# =============================================================================
+# Model identity
+# =============================================================================
+experiment:
+  model: "dinov3"
+
+# =============================================================================
+# Paths
+# =============================================================================
+paths:
+  checkpoint_path: "/path/to/dinov3_weights"
+  output_root:     "/path/to/outputs"
+
+# =============================================================================
+# Feature extraction
+# =============================================================================
+feature_extraction:
+  batch_size:       1      # DINOv3 processes one volume at a time (slice loop)
+  slice_batch_size: 32     # 2D slices per DINOv3 forward pass (GPU memory)
+  device:           "cuda"
+
+# =============================================================================
+# ROI-specific settings
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:    "classification"
+    n_classes:    4
+    crop_dir:     "/path/to/mri_preproc_hcp/crop_mni09c_1mm"
+    roi_dirname:  "OFC"
+    master_table: "/path/to/data/ofc_hcp/master_table_ofc.csv"
+
+  fip:
+    task_type:    "classification"
+    n_classes:    2
+    crop_dir:     "/path/to/mri_preproc_hcp/crop_mni09c_1mm"
+    roi_dirname:  "FIP"
+    master_table: "/path/to/data/fip_hcp/master_table_fip.csv"
+
+  sc:
+    task_type:    "regression"
+    n_classes:    null
+    crop_dir:     "/path/to/mri_preproc_hcp/crop_mni09c_1mm"
+    roi_dirname:  "Central"
+    master_table: "/path/to/data/sc_hcp/master_table_sc.csv"
+
+# =============================================================================
+# Probe hyperparameters
+# =============================================================================
+probe:
+  n_folds: 5
+
+  # LogisticRegression L2 — classification with mean_pool + mean_pool_axis
+  logreg:
+    C: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  # RidgeClassifier — all other classification combinations
+  ridgeclassifier:
+    alpha: [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  # Ridge regression — SC (all modes)
+  ridge:
+    alpha: [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]

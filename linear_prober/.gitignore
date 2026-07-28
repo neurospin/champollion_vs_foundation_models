@@ -1,0 +1,20 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# ---- Test / build artifacts ----
+.pytest_cache/
+.coverage
+build/
+dist/
+
+# ---- Experiment outputs ----
+outputs/
+
+# ---- Editor / OS cruft ----
+.DS_Store
+*.swp
+*.swo
+*~

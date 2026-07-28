@@ -1,0 +1,51 @@
+# =============================================================================
+# 3DINO_adapted — NOT published yet.
+# It is a derivative of 3DINO (CC BY-NC-ND 4.0, "NoDerivatives"); distributing
+# the modified version requires permission from the 3DINO authors. Excluded
+# from the repository until that is resolved.
+# =============================================================================
+/3DINO_adapted/
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# =============================================================================
+# Test / build artifacts
+# =============================================================================
+.pytest_cache/
+.coverage
+build/
+dist/
+
+# =============================================================================
+# Data / weights / logs / outputs — sensitive or too large for GitHub.
+# Rules are ANCHORED (leading slash) so they never match the source-code
+# package dinov2/data/ — only the real data/weights/output directories.
+# =============================================================================
+*.npy
+*.pth
+*.pt
+/linear_prober/data/
+/linear_prober/outputs/
+/3DINO_adapted/data_hcp/
+/3DINO_adapted/datalists/
+/3DINO_adapted/weights/
+/3DINO_adapted/logs/
+/3DINO_adapted/logs_cingulate/
+/3DINO_adapted/outputs/
+tmp/
+
+# =============================================================================
+# Editor / OS cruft
+# =============================================================================
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

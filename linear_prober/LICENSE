@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 Robin Guiavarch, Télécom Paris (LTCI)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+NOTE ON THIRD-PARTY COMPONENTS
+
+This MIT license covers the original probing code in this repository (the
+`linear_prober.core` engine, the modality runners, the extraction adapters and
+the test suite).
+
+The per-model wrappers under `linear_prober/skeleton/models/` and
+`linear_prober/mri/models/` adapt code and load checkpoints from external
+foundation-model repositories, each governed by its own upstream license — in
+particular 3DINO / DINOv2 / DINOv3, SAM-Med3D, MONAI VISTA3D and
+BrainSegFounder. Notably, the 3DINO-derived code is subject to the upstream
+CC BY-NC-ND 4.0 license (non-commercial, no derivatives). Users must comply
+with each upstream license when using the corresponding model.

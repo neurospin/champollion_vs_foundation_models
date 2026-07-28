@@ -1,0 +1,126 @@
+# config_probe_bsf.yaml
+# BrainSegFounder (SSLHead SwinViT encoder, UKB-pretrain) — all 4 ROIs
+#
+# Usage:
+#   python scripts/normalizer_search.py   --config configs/config_probe_bsf.yaml --roi fip --preprocessing upscale_pad
+#   python scripts/fit_pca.py       --config configs/config_probe_bsf.yaml --roi fip --preprocessing upscale_pad
+#   python scripts/run_probe.py      --config configs/config_probe_bsf.yaml --roi fip --preprocessing upscale_pad
+#   python scripts/run_probe.py         --config configs/config_probe_bsf.yaml --roi ofc --preprocessing upscale_pad
+#   python scripts/run_probe.py          --config configs/config_probe_bsf.yaml --roi sc  --preprocessing upscale_pad
+#
+# Architecture (confirmed from inspection):
+#   SwinViT: feature_size=48, depths=[2,2,2,2], heads=[3,6,12,24]
+#   hs[4]: [B, 768, 3, 3, 3]  →  mean_pool=[B,768], flatten=[B,20736]
+#   hs[1,2,4] GAP concat      →  mean_pool_multi_layers=[B,1056]
+#
+# Checkpoint:
+#   Missing keys: 0 / Unexpected keys: 0 (verified)
+#   Only swinViT encoder weights used — SSL heads ignored.
+#
+# SSL_Head import:
+#   _add_repo_to_path(config["repositories"]["bsf"]) called before _build_model
+#   from pretrain.models.ssl_head import SSLHead
+
+# =============================================================================
+# Model identity
+# =============================================================================
+experiment:
+  model: "bsf"
+
+# =============================================================================
+# Repository — added to sys.path for SSL_Head import
+# =============================================================================
+repositories:
+  bsf: "/path/to/BrainSegFounder"
+
+# =============================================================================
+# Paths
+# =============================================================================
+paths:
+  checkpoint_path: "/path/to/brainsegfounder_weights/model_weights_UKB-pretrain.pt"
+  output_root:     "/path/to/outputs"
+
+# =============================================================================
+# Model normalisation range
+#
+# BrainSegFounder pretrained on UKB MRI normalized to [0.0, 1.0].
+# Our binary volumes {0,1} are already in [0.0, 1.0] — identity mapping.
+# No internal normalization module in SwinViT encoder.
+# MODEL_RANGE = (0.0, 1.0)
+# =============================================================================
+model_normalization:
+  range: [0.0, 1.0]
+
+# =============================================================================
+# Optimal mapping — filled after scripts/normalizer_search.py
+# =============================================================================
+optimal_mapping:
+  ofc: {p0: 0, p1: 1}
+  fip: {p0: 0, p1: 1}
+  lc:  {p0: 0, p1: 1}
+  sc:  {p0: 0, p1: 1}
+
+# =============================================================================
+# Feature extraction — 96³ for all ROIs
+# =============================================================================
+feature_extraction:
+  target_shape: [96, 96, 96]
+  batch_size:   4        # SwinViT lighter than VISTA3D — batch=4 safe on A100
+  num_workers:  4
+  device:       "cuda"
+
+# =============================================================================
+# Normalizer grid search
+# =============================================================================
+normalizer_search:
+  grid_step: 0.1   # 55 couples over [0,1]²
+
+# =============================================================================
+# ROI-specific settings
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:    "classification"
+    n_classes:    4
+    hcp_volumes_native:    "/path/to/data/ofc_hcp/volumes_native_ofc.npy"
+    hcp_master_table:      "/path/to/data/ofc_hcp/master_table_ofc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_ofc_skeletons.npy"
+
+  fip:
+    task_type:    "classification"
+    n_classes:    2
+    hcp_volumes_native:    "/path/to/data/fip_hcp/volumes_native_fip.npy"
+    hcp_master_table:      "/path/to/data/fip_hcp/master_table_fip.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_fip_skeletons.npy"
+
+  lc:
+    task_type:    "classification"
+    n_classes:    2
+    hcp_volumes_native:    "/path/to/data/lc_acc/volumes_native_lc.npy"
+    hcp_master_table:      "/path/to/data/lc_acc/master_table_lc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_lc_skeletons.npy"
+
+  sc:
+    task_type:    "regression"
+    n_classes:    null
+    hcp_volumes_native:    "/path/to/data/sc_hcp/volumes_native_sc.npy"
+    hcp_master_table:      "/path/to/data/sc_hcp/master_table_sc.csv"
+    ukbb_volumes_native:   "/path/to/ukbb_sc_skeletons.npy"
+
+# =============================================================================
+# Probe hyperparameters
+# =============================================================================
+probe:
+  n_folds:           5
+  n_components_list: [32, 128, 256, 512, 1024, 2048, 4096, 8192]
+  # flatten dim = 20736 >> 8192 — all n_components safe
+
+  classifier: "logreg"
+  C:        [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  alpha: [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  flatten_raw_alpha: [1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
+
+  normalizer_search_C: [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]

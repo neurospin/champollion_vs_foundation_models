@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linear_prober"
+version = "1.0.0"
+description = "Zero-shot linear probing of frozen 3D encoders on cortical sulcal skeletons and MRI crops."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "torch",
+    "nibabel",
+    "pyyaml",
+    "joblib",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["linear_prober*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
