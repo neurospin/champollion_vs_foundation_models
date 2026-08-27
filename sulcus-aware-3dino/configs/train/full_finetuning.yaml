@@ -1,0 +1,26 @@
+# dinov2/configs/train/full_finetuning.yaml
+#
+# Full fine-tuning configuration for sulcal SSL.
+# This file only contains differences from ssl3d_default_config.yaml.
+#
+# Final resolved config:
+#   merge(ssl3d_default_config, full_finetuning, cli_overrides)
+
+student:
+  pretrained_weights: "/path/to/weights/3dino_vit_weights.pth"
+  full_pretrained_weights: ""
+
+peft:
+  enable: true
+  method: full_finetune
+
+train:
+  dataset_path: "data/pretrain_sulcal_datalist.json"
+
+  affine_prob_global: 1.0
+  translate_range_global: [1, 1, 1]
+  rotate_range_global: [0.314159, 0.314159, 0.314159] # ±18 degrees
+
+  affine_prob_local: 1.0
+  translate_range_local: [1, 1, 1]
+  rotate_range_local: [0.314159, 0.314159, 0.314159] # ±18 degrees

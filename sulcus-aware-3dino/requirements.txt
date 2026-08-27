@@ -1,0 +1,11 @@
+# Direct third-party dependencies of sulcus_aware_3DINO's own code.
+#
+# This is an extension layer: the upstream 3DINO clone (see README) provides the
+# full runtime stack (torch, xformers, torchvision, iopath, ...) and the dinov2
+# package this code imports. Install 3DINO/requirements.txt FIRST; the pins below
+# match that tested environment and are listed here for reproducibility.
+torch==2.0.0
+numpy
+monai==1.3.0
+omegaconf
+fvcore

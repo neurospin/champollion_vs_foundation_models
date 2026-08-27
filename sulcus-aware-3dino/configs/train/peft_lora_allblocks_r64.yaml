@@ -1,0 +1,34 @@
+# dinov2/configs/train/peft_lora_allblocks.yaml
+#
+# Loading strategy:
+# 1. pretrained_weights loads W0 into raw student/teacher backbones before PEFT injection.
+# 2. LoRA wraps qkv as qkv.linear + qkv.lora_A/B.
+# 3. full_pretrained_weights then loads SSL heads, and may partially reload compatible
+#    backbone keys. LoRA keys remain missing by design and keep zero-impact init.
+
+student:
+  pretrained_weights: "/path/to/weights/3dino_vit_weights.pth"
+  full_pretrained_weights: ""
+
+
+peft:
+  enable: true
+  method: lora
+  r: 64
+  alpha: 128
+  dropout: 0.0
+  target_modules:
+    - "qkv"
+  scope: "all_blocks"
+
+train:
+  dataset_path: "data/pretrain_sulcal_datalist.json"
+
+  affine_prob_global: 1.0
+  translate_range_global: [1, 1, 1]
+  rotate_range_global: [0.314159, 0.314159, 0.314159] # ± 18°
+
+
+  affine_prob_local: 1.0
+  translate_range_local: [1, 1, 1]
+  rotate_range_local: [0.314159, 0.314159, 0.314159] # ± 18°

@@ -1,0 +1,118 @@
+# dinov2/configs/train/full_finetuning_anisotropic_cingulate.yaml
+#
+# Dedicated full fine-tuning configuration for anisotropic continual
+# pretraining on the UK Biobank anterior cingulate sulcal skeletons.
+#
+# This file is merged with:
+#   dinov2/configs/ssl3d_default_config_anisotropic.yaml
+#
+# Spatial convention:
+#   source volume     : [18, 73, 57]
+#   global crop       : [32, 112, 96]
+#   global patch grid : [2, 7, 6]
+#   global tokens     : 84
+#   local crop        : [32, 32, 32]
+#   local patch grid  : [2, 2, 2]
+#   local tokens      : 8
+
+
+MODEL:
+  WEIGHTS: ""
+
+
+# =============================================================================
+# Public 3DINO backbone
+# =============================================================================
+
+student:
+  arch: vit_large_3d
+  patch_size: 16
+
+  pretrained_weights: "/path/to/weights/3dino_vit_weights.pth"
+
+  # Explicitly disabled: the anisotropic meta-architecture loads only the
+  # public backbone weights, strictly, before creating the SSL heads.
+  full_pretrained_weights: ""
+
+
+# =============================================================================
+# Full fine-tuning only
+# =============================================================================
+
+peft:
+  enable: true
+  method: full_finetune
+
+
+# =============================================================================
+# Anisotropic runtime geometry
+# =============================================================================
+
+crops:
+  # Reference geometry used only to construct the public ViT backbone and
+  # retain its native learned positional embedding [1,344,1024].
+  backbone_reference_size: 112
+
+  # Real global shape sent to the student and teacher during training.
+  global_crops_shape: [32, 112, 96]
+
+  # Two global views are implicit in the DINO/iBOT pipeline.
+  local_crops_number: 8
+  local_crops_size: 32
+
+
+# =============================================================================
+# Dataset and runtime data pipeline
+# =============================================================================
+
+train:
+  dataset_format: npy_array
+
+  dataset_path: "/path/to/lc_skeletons.npy"
+
+  npy_mmap_mode: r
+  npy_input_layout: auto
+  binarize_nonzero: true
+
+  # Restrict iBOT masking to patches containing sulcal foreground.
+  use_non_empty_masking: true
+
+  # Provisional smoke-test value.
+  # The final batch size will be selected after measuring H100 memory usage.
+  batch_size_per_gpu: 2
+
+  num_workers: 24
+
+  # Normal full-run behavior. Override with a small positive value for smoke
+  # tests, for example:
+  #   train.stop_after_iterations=5
+  stop_after_iterations: 0
+
+  # Enable only for the first end-to-end smoke test.
+  validate_first_batch: false
+
+  max_local_crop_retries: 3
+
+
+# =============================================================================
+# EMA teacher
+# =============================================================================
+
+teacher:
+  momentum_teacher: 0.98
+  final_momentum_teacher: 0.9996
+
+  warmup_teacher_temp_epochs: 2
+
+
+# =============================================================================
+# Optimization
+# =============================================================================
+
+optim:
+  warmup_epochs: 5
+  freeze_last_layer_epochs: 2
+
+  # The patch embedding remains trainable during full fine-tuning, but uses
+  # a reduced learning-rate multiplier.
+  patch_embed_lr_mult: 0.2

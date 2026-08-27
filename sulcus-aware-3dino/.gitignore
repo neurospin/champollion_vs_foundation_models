@@ -1,0 +1,27 @@
+build/
+dist/
+*.egg-info/
+**/__pycache__/
+.idea
+slurm*
+cufile.log
+
+# ---- Data / weights / logs / outputs (not tracked; too large or sensitive) ----
+weights/
+data/
+datalists/
+logs/
+logs_cingulate/
+outputs/
+*.pth
+*.npy
+
+# ---- OS cruft ----
+.DS_Store
+
+**/.ipynb_checkpoints
+**/.ipynb_checkpoints/**
+
+*.swp
+
+.vscode/

@@ -1,0 +1,351 @@
+# sulcus_aware_3DINO/configs/ssl3d_default_config_anisotropic.yaml
+#
+# Complete default configuration for the dedicated anisotropic 3DINO
+# continual-pretraining pipeline.
+#
+# Experiment configurations are merged on top of this file, for example:
+#
+#   dinov2/configs/train/full_finetuning_anisotropic_cingulate.yaml
+#
+# Configuration resolution order:
+#
+#   1. ssl3d_default_config_anisotropic.yaml
+#   2. experiment YAML
+#   3. command-line overrides
+#
+# runtime_geometry is not defined manually here. It is generated and
+# validated by dinov2/utils/config_anisotropic.py from:
+#
+#   student.patch_size
+#   crops.backbone_reference_size
+#   crops.global_crops_shape
+#   crops.local_crops_size
+
+
+MODEL:
+  WEIGHTS: ""
+
+
+# =============================================================================
+# FSDP and mixed precision
+# =============================================================================
+
+compute_precision:
+  grad_scaler: true
+
+  teacher:
+    backbone:
+      sharding_strategy: SHARD_GRAD_OP
+      mixed_precision:
+        param_dtype: fp16
+        reduce_dtype: fp16
+        buffer_dtype: fp32
+
+    dino_head:
+      sharding_strategy: SHARD_GRAD_OP
+      mixed_precision:
+        param_dtype: fp16
+        reduce_dtype: fp16
+        buffer_dtype: fp32
+
+    ibot_head:
+      sharding_strategy: SHARD_GRAD_OP
+      mixed_precision:
+        param_dtype: fp16
+        reduce_dtype: fp16
+        buffer_dtype: fp32
+
+  student:
+    backbone:
+      sharding_strategy: SHARD_GRAD_OP
+      mixed_precision:
+        param_dtype: fp16
+        reduce_dtype: fp16
+        buffer_dtype: fp32
+
+    dino_head:
+      sharding_strategy: SHARD_GRAD_OP
+      mixed_precision:
+        param_dtype: fp16
+        reduce_dtype: fp32
+        buffer_dtype: fp32
+
+    ibot_head:
+      sharding_strategy: SHARD_GRAD_OP
+      mixed_precision:
+        param_dtype: fp16
+        reduce_dtype: fp32
+        buffer_dtype: fp32
+
+
+# =============================================================================
+# DINO objective
+# =============================================================================
+
+dino:
+  loss_weight: 1.0
+
+  head_n_prototypes: 65536
+  head_bottleneck_dim: 256
+  head_nlayers: 3
+  head_hidden_dim: 2048
+
+  koleo_loss_weight: 0.1
+
+
+# =============================================================================
+# iBOT objective
+# =============================================================================
+
+ibot:
+  loss_weight: 1.0
+
+  mask_sample_probability: 0.5
+
+  mask_ratio_min_max:
+    - 0.2
+    - 0.75
+
+  separate_head: true
+
+  head_n_prototypes: 65536
+  head_bottleneck_dim: 256
+  head_nlayers: 3
+  head_hidden_dim: 2048
+
+
+# =============================================================================
+# Training and anisotropic NPY data pipeline
+# =============================================================================
+
+train:
+  # ---------------------------------------------------------------------------
+  # Checkpointing
+  # ---------------------------------------------------------------------------
+
+  saveckp_period_iterations: 3750
+  max_to_keep: 3
+
+  output_dir: ./output_test
+
+  # Required by default_setup().
+  seed: 0
+
+  # ---------------------------------------------------------------------------
+  # DataLoader
+  # ---------------------------------------------------------------------------
+
+  batch_size_per_gpu: 2
+  num_workers: 4
+
+  # Logical number of iterations per epoch.
+  OFFICIAL_EPOCH_LENGTH: 1250
+
+  # ---------------------------------------------------------------------------
+  # Dedicated dataset mode
+  # ---------------------------------------------------------------------------
+
+  # The dedicated anisotropic pipeline supports only npy_array.
+  dataset_format: npy_array
+
+  # This value must be overridden by the experiment configuration.
+  dataset_path: ""
+
+  # Open one large NPY array with a read-only worker-local memmap.
+  npy_mmap_mode: r
+
+  # Supported source layouts:
+  #   auto  -> accept [N,D,H,W] or [N,D,H,W,1]
+  #   NDHW  -> require [N,D,H,W]
+  #   NDHW1 -> require [N,D,H,W,1]
+  npy_input_layout: auto
+
+  # Convert every non-zero source value to one before preprocessing.
+  binarize_nonzero: true
+
+  # ---------------------------------------------------------------------------
+  # Smoke-test controls
+  # ---------------------------------------------------------------------------
+
+  # A value <= 0 runs the complete configured training duration.
+  # A positive value stops after that number of iterations without shortening
+  # the learning-rate, weight-decay, EMA or temperature schedules.
+  stop_after_iterations: 0
+
+  # Enable expensive first-batch and first-backward assertions only for
+  # end-to-end validation jobs.
+  validate_first_batch: false
+
+  # ---------------------------------------------------------------------------
+  # Teacher target normalization
+  # ---------------------------------------------------------------------------
+
+  centering: sinkhorn_knopp
+
+  # ---------------------------------------------------------------------------
+  # Global-view augmentations
+  # ---------------------------------------------------------------------------
+
+  affine_prob_global: 1.0
+
+  translate_range_global:
+    - 1.0
+    - 1.0
+    - 1.0
+
+  rotate_range_global:
+    - 0.314159
+    - 0.314159
+    - 0.314159
+
+  # ---------------------------------------------------------------------------
+  # Local-view augmentations
+  # ---------------------------------------------------------------------------
+
+  affine_prob_local: 1.0
+
+  translate_range_local:
+    - 1.0
+    - 1.0
+    - 1.0
+
+  rotate_range_local:
+    - 0.314159
+    - 0.314159
+    - 0.314159
+
+  # Number of attempts used to obtain a non-empty local crop.
+  max_local_crop_retries: 3
+
+  # ---------------------------------------------------------------------------
+  # iBOT masking strategy
+  # ---------------------------------------------------------------------------
+
+  # true:
+  #   mask only patches containing at least one active sulcal voxel.
+  #
+  # false:
+  #   use uniform masking over the full global patch grid.
+  use_non_empty_masking: true
+
+
+# =============================================================================
+# Student backbone
+# =============================================================================
+
+student:
+  arch: vit_large_3d
+
+  patch_size: 16
+
+  drop_path_rate: 0.3
+  layerscale: 1.0e-05
+  drop_path_uniform: true
+
+  # Public backbone checkpoint. The experiment configuration must override it.
+  pretrained_weights: ""
+
+  # Explicitly unsupported by SSLMetaArchAnisotropic.
+  full_pretrained_weights: ""
+
+  ffn_layer: mlp
+  block_chunks: 4
+
+  qkv_bias: true
+  proj_bias: true
+  ffn_bias: true
+
+
+# =============================================================================
+# EMA teacher
+# =============================================================================
+
+teacher:
+  momentum_teacher: 0.992
+  final_momentum_teacher: 1.0
+
+  warmup_teacher_temp: 0.04
+  teacher_temp: 0.07
+
+  warmup_teacher_temp_epochs: 30
+
+
+# =============================================================================
+# Optimization
+# =============================================================================
+
+optim:
+  epochs: 100
+
+  weight_decay: 0.04
+  weight_decay_end: 0.4
+
+  # Reference learning rate for an effective batch size of 1024.
+  base_lr: 0.002
+
+  # Resolved by the configured scaling rule.
+  lr: 0.0
+
+  warmup_epochs: 10
+  min_lr: 1.0e-06
+
+  clip_grad: 3.0
+
+  freeze_last_layer_epochs: 1
+
+  scaling_rule: sqrt_wrt_1024
+
+  patch_embed_lr_mult: 0.2
+  layerwise_decay: 0.9
+
+  adamw_beta1: 0.9
+  adamw_beta2: 0.999
+
+
+# =============================================================================
+# Anisotropic crop geometry
+# =============================================================================
+
+crops:
+  # Reference size used only to construct the public pretrained backbone.
+  #
+  # The backbone therefore retains:
+  #   patch_embed.img_size = [112,112,112]
+  #   pretrained patch grid = [7,7,7]
+  #   pretrained pos_embed  = [1,344,1024]
+  backbone_reference_size: 112
+
+  # Actual spatial shape used by the two global student/teacher views.
+  #
+  # With patch_size=16:
+  #   [32,112,96] -> [2,7,6] -> 84 patch tokens
+  global_crops_shape:
+    - 32
+    - 112
+    - 96
+
+  local_crops_number: 8
+
+  # Local crops remain cubic.
+  #
+  # With patch_size=16:
+  #   [32,32,32] -> [2,2,2] -> 8 patch tokens
+  local_crops_size: 32
+
+
+# =============================================================================
+# Teacher checkpoint export
+# =============================================================================
+
+evaluation:
+  eval_period_iterations: 12500
+
+
+# =============================================================================
+# Supported adaptation mode
+# =============================================================================
+
+peft:
+  # SSLMetaArchAnisotropic currently supports full fine-tuning only.
+  enable: true
+  method: full_finetune
