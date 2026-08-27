@@ -8,7 +8,8 @@ cufile.log
 
 # ---- Data / weights / logs / outputs (not tracked; too large or sensitive) ----
 weights/
-data/
+# Anchored to the repo root so it never matches the sulcus_aware_3DINO/data package.
+/data/
 datalists/
 logs/
 logs_cingulate/
