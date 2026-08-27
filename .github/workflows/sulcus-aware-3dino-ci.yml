@@ -1,0 +1,55 @@
+name: sulcus-aware-3dino CI
+
+# sulcus-aware-3dino lives in a subfolder of this monorepo, so this workflow runs
+# from the monorepo root and only fires when that folder (or this file) changes.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'sulcus-aware-3dino/**'
+      - '.github/workflows/sulcus-aware-3dino-ci.yml'
+  pull_request:
+    paths:
+      - 'sulcus-aware-3dino/**'
+      - '.github/workflows/sulcus-aware-3dino-ci.yml'
+
+defaults:
+  run:
+    working-directory: sulcus-aware-3dino
+
+jobs:
+  # "It compiles" for the WHOLE package. Pure syntax check — needs no dependencies
+  # and no external 3DINO clone (this repo is an extension layer that imports
+  # dinov2.* only at runtime).
+  compile:
+    name: byte-compile (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Byte-compile all sources
+        run: python -m compileall -q sulcus_aware_3DINO train.py train_anisotropic.py
+
+  # Synthetic smoke test of the self-contained sulcal numerics (density masking,
+  # geometric preprocessing, multi-crop collate) on random tensors. Needs only
+  # numpy/torch — no neuroimaging data, no checkpoints, no GPU, no 3DINO clone.
+  smoke:
+    name: synthetic smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal deps (CPU-only PyTorch)
+        run: |
+          pip install numpy pytest
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Run synthetic smoke test
+        run: pytest tests/ -q

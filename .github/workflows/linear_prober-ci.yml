@@ -1,0 +1,51 @@
+name: linear_prober CI
+
+# linear_prober lives in a subfolder of this monorepo, so this workflow runs from
+# the monorepo root and only fires when linear_prober (or this file) changes.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'linear_prober/**'
+      - '.github/workflows/linear_prober-ci.yml'
+  pull_request:
+    paths:
+      - 'linear_prober/**'
+      - '.github/workflows/linear_prober-ci.yml'
+
+defaults:
+  run:
+    working-directory: linear_prober
+
+jobs:
+  test:
+    name: compile + tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: linear_prober/pyproject.toml
+
+      # CPU-only wheel keeps the install small and fast (no CUDA download).
+      - name: Install CPU-only PyTorch
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install package + test extras
+        run: pip install -e ".[test]"
+
+      # "It compiles" in Python = every source byte-compiles with no syntax error.
+      - name: Byte-compile all sources
+        run: python -m compileall -q linear_prober scripts
+
+      # The suite runs on SYNTHETIC features — no neuroimaging data, no checkpoints.
+      - name: Run test suite
+        run: pytest -q
