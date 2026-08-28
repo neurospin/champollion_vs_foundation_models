@@ -106,6 +106,47 @@ def get_ukbb_features(config: Dict, roi: str, preprocessing: str) -> Dict:
     )
 
 
+def get_hcp_features_point_m2ae(
+    config: Dict, roi: str, mode: str, grouping: str, aggregation: str, upsample: float
+) -> Dict:
+    """Return cached (or extracted) Point-M2AE features for one composite mode.
+
+    Point-M2AE consumes point clouds built from the native volumes, so there is
+    no geometric-preprocessing level: features are cached under
+    ``{output_root}/point_m2ae/{roi}/extracted_features/`` directly (the MRI
+    layout). The upstream repository is put on ``sys.path`` from the config
+    ``repositories.point_m2ae`` key.
+    """
+    checkpoint_path = config["paths"]["checkpoint_path"]
+    output_root = config["paths"]["output_root"]
+    device = config["feature_extraction"]["device"]
+    batch_size = int(config["feature_extraction"]["batch_size"])
+    num_workers = int(config["feature_extraction"].get("num_workers", 4))
+
+    roi_cfg = config["rois"][roi]
+
+    module = importlib.import_module(
+        "linear_prober.skeleton.models.point_m2ae.extract_features"
+    )
+    module._add_repo_to_path(config["repositories"]["point_m2ae"])
+    extract_fn = module.make_extract_fn(
+        grouping=grouping, aggregation=aggregation, upsample=upsample, device=device
+    )
+
+    dataloader = build_hcp_dataloader(
+        volumes_path=roi_cfg["hcp_volumes_native"],
+        master_table_path=roi_cfg["hcp_master_table"],
+        task_type=roi_cfg["task_type"],
+        batch_size=batch_size,
+        num_workers=num_workers,
+    )
+
+    cache_path = build_feature_path(output_root, "point_m2ae", roi, mode)
+    return load_or_extract(
+        cache_path, lambda: extract_fn(checkpoint_path, dataloader, mode, device)
+    )
+
+
 def get_hcp_features_dinov3(
     config: Dict, roi: str, preprocessing: str, mode: str
 ) -> Dict:

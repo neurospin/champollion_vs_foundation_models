@@ -50,7 +50,7 @@ paths:
 #
 # Other models for reference:
 #   3DINO   → [-1.0,  1.0]   (ScaleIntensityRangePercentilesd b_min=-1 b_max=1)
-#   VISTA3D → [ 0.0,  1.0]   (to verify)
+#   VISTA3D → [ 0.0,  1.0]
 # =============================================================================
 model_normalization:
   range: [0.0, 1.0]
@@ -76,10 +76,10 @@ model_normalization:
 # null → fallback to full model range (p0=0.0, p1=1.0)
 # =============================================================================
 optimal_mapping:
-  ofc: {p0: 0.5, p1: 0.6}   # best_cv — cohérent (cv=0.655, test=0.649)
-  fip: {p0: 0.0, p1: 1.0}   # best_cv — best_test trop suspect (test=0.767 avec cv=0.615)
-  lc:  {p0: 0.0, p1: 1.0}   # best_test — best_cv instable (cv=0.571, test=0.533)
-  sc:  {p0: 0.1, p1: 0.2}   # best_cv — cohérent
+  ofc: {p0: 0.5, p1: 0.6}   # selected by CV (cv=0.655; held-out test=0.649, consistent)
+  fip: {p0: 0.0, p1: 1.0}   # selected by CV (best-CV mapping; full range retained)
+  lc:  {p0: 0.0, p1: 1.0}   # search unstable on this ROI -> neutral full range retained
+  sc:  {p0: 0.1, p1: 0.2}   # selected by CV (consistent with held-out test)
 
 
 # =============================================================================

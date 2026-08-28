@@ -60,17 +60,22 @@ def test_config_has_required_keys(path):
         for k in roi_keys:
             assert k in roi_cfg, f"{_label(path)}: rois.{roi} missing {k}"
 
-    if modality == "skeleton":
+    # Point-M2AE is the point-cloud path: no intensity mapping applies.
+    if modality == "skeleton" and model != "point_m2ae":
         assert _has(cfg, "model_normalization", "range"), _label(path)
 
-    # Hyperparameter grids: DINOv3 uses three nested grids; the 3D models use
-    # the flat C / alpha / flatten_raw_alpha grids.
+    # Hyperparameter grids: DINOv3 uses three nested grids; Point-M2AE uses the
+    # standard C / alpha grids only (no flatten_raw, no PCA); the 3D voxel
+    # models use the flat C / alpha / flatten_raw_alpha grids.
     if model == "dinov3":
         for keys in [
             ("probe", "logreg", "C"),
             ("probe", "ridgeclassifier", "alpha"),
             ("probe", "ridge", "alpha"),
         ]:
+            assert _has(cfg, *keys), f"{_label(path)}: missing {'.'.join(keys)}"
+    elif model == "point_m2ae":
+        for keys in [("probe", "C"), ("probe", "alpha")]:
             assert _has(cfg, *keys), f"{_label(path)}: missing {'.'.join(keys)}"
     else:
         for keys in [("probe", "C"), ("probe", "alpha"), ("probe", "flatten_raw_alpha")]:
@@ -80,5 +85,5 @@ def test_config_has_required_keys(path):
 
 
 def test_all_configs_discovered():
-    # Sanity: the glob actually found the shipped configs (5 skeleton + 4 mri).
-    assert len(CONFIGS) == 9
+    # Sanity: the glob actually found the shipped configs (6 skeleton + 4 mri).
+    assert len(CONFIGS) == 10

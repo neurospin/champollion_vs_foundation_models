@@ -517,7 +517,7 @@ def extract_mean_pool_for_mapping(
             x = normalize(x, v0, v1)  # {v0,v1}
         else:
             x = normalize(batch_t, v0, v1)  # {v0,v1}
-            x = preprocess_batch(x, target_shape, preprocessing)  # interpolé
+            x = preprocess_batch(x, target_shape, preprocessing)  # resized to cube
 
         x = x.to(device, non_blocking=True)
 

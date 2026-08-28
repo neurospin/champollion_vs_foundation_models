@@ -1,0 +1,91 @@
+# Point-M2AE (hierarchical point-cloud MAE, MIT license) — skeleton modality only.
+#
+# Linear probing (defaults = the configuration used for the reported runs:
+# official pretraining geometry, mean aggregation, native resolution):
+#   python scripts/run_probe_point_m2ae.py \
+#     --config configs/skeleton/config_probe_point_m2ae.yaml --roi ofc
+#
+# Exploration axes (studied on the OFC ROI):
+#   --grouping    standard | wide                          (tokeniser geometry)
+#   --aggregation mean | mean_std_min_max | multi_level    (frozen-token pooling)
+#   --upsample    1.0 | 1.25 | 1.5 | 1.75 | 2.0            (point-density control)
+#
+# The skeleton volume is converted to a fixed-centre normalised point cloud —
+# no geometric preprocessing, no intensity mapping, no PCA.
+
+# =============================================================================
+# Model identity
+# =============================================================================
+experiment:
+  model: "point_m2ae"
+  output_model_name: "point_m2ae"
+
+
+# =============================================================================
+# Repository — added to sys.path for `from models... import ...`
+# =============================================================================
+repositories:
+  point_m2ae: "/path/to/Point-M2AE/"
+
+
+# =============================================================================
+# Paths — point these at your local checkpoint and output directory.
+# =============================================================================
+paths:
+  checkpoint_path: "/path/to/Point-M2AE/ckpts/pre-train.pth"
+  output_root:     "/path/to/outputs"
+
+
+# =============================================================================
+# Feature extraction — needs a GPU and the upstream runtime dependencies
+# (timm, knn_cuda, CUDA point ops). Probing cached features does not.
+# =============================================================================
+feature_extraction:
+  batch_size:  8
+  num_workers: 4
+  device:      "cuda"
+
+
+# =============================================================================
+# ROI-specific settings — selected at runtime via --roi ofc|fip|lc|sc
+# =============================================================================
+rois:
+
+  ofc:
+    task_type:        "classification"
+    n_classes:        4
+    hcp_volumes_native:    "/path/to/data/ofc_hcp/volumes_native_ofc.npy"
+    hcp_master_table:      "/path/to/data/ofc_hcp/master_table_ofc.csv"
+
+  fip:
+    task_type:        "classification"
+    n_classes:        2
+    hcp_volumes_native:    "/path/to/data/fip_hcp/volumes_native_fip.npy"
+    hcp_master_table:      "/path/to/data/fip_hcp/master_table_fip.csv"
+
+  lc:
+    task_type:        "classification"
+    n_classes:        2
+    hcp_volumes_native:    "/path/to/data/lc_acc/volumes_native_lc.npy"
+    hcp_master_table:      "/path/to/data/lc_acc/master_table_lc.csv"
+
+  sc:
+    task_type:        "regression"
+    n_classes:        null
+    hcp_volumes_native:    "/path/to/data/sc_hcp/volumes_native_sc.npy"
+    hcp_master_table:      "/path/to/data/sc_hcp/master_table_sc.csv"
+
+
+# =============================================================================
+# Probe hyperparameters — the standard grids, shared with the other encoders
+# (384-1536D features, standard low-dimensional regime; no PCA, no flatten).
+# =============================================================================
+probe:
+  n_folds: 5
+
+  # Classification (OFC, FIP, LC) — LogisticRegression over this C grid.
+  classifier: "logreg"
+  C:          [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+
+  # Regression (SC) — Ridge over this alpha grid.
+  alpha: [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]

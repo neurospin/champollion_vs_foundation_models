@@ -65,6 +65,7 @@ forward passes genuinely differ between binary grids and MRI crops.
 | VISTA3D | `vista3d` | [MONAI VISTA3D](https://github.com/Project-MONAI/VISTA) *(skeleton only)* |
 | BrainSegFounder | `bsf` | [BrainSegFounder](https://github.com/lab-smile/BrainSegFounder) (bundled `SSL_Head.py`) |
 | DINOv3 | `dinov3` | [DINOv3](https://github.com/facebookresearch/dinov3) weights (2D slicing path) |
+| Point-M2AE | `point_m2ae` | [Point-M2AE](https://github.com/ZrrSkywalker/Point-M2AE) *(skeleton only, point-cloud path)* |
 
 Each model loads a frozen checkpoint and, for models that import an external
 repository, needs that repository on the Python path — set via the config
@@ -85,7 +86,10 @@ repositories above and a CUDA-capable GPU.
 
 The 3D encoders (`dino3d`, `sam3d`, `vista3d`, `bsf`) use `run_probe.py`; DINOv3
 (the 2D-slicing path) has a dedicated entry point `run_probe_dinov3.py` because
-its run is parameterised by a composite feature mode.
+its run is parameterised by a composite feature mode. Point-M2AE (the
+point-cloud path, skeleton only) likewise has its own entry point
+`run_probe_point_m2ae.py`: the skeleton volume is converted to a fixed-centre
+normalised point cloud, so no geometric preprocessing applies.
 
 ```bash
 # 3D encoders — skeleton (a geometric preprocessing is required)
@@ -103,6 +107,12 @@ python scripts/run_probe_dinov3.py --modality skeleton \
     --roi ofc --preprocessing upscale_pad \
     --model_size vitb16 --slicer_mode 2d \
     --extraction mean_pool --aggregation mean_pool_axis
+
+# Point-M2AE — point-cloud path (skeleton only); the defaults select the
+# reported configuration (pretraining geometry, mean aggregation, native
+# resolution); --grouping / --aggregation / --upsample expose the explored axes
+python scripts/run_probe_point_m2ae.py \
+    --config configs/skeleton/config_probe_point_m2ae.yaml --roi ofc
 ```
 
 Omit `--mode` to run all feature modes. `--flatten-raw` (skeleton, 3D encoders)

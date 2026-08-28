@@ -45,7 +45,7 @@ paths:
 #
 #   3DINO     -> [-1.0, 1.0]
 #   SAM-Med3D -> [ 0.0, 1.0]
-#   VISTA3D   -> [ 0.0, 1.0]  (to verify)
+#   VISTA3D   -> [ 0.0, 1.0]
 # =============================================================================
 model_normalization:
   range: [-1.0, 1.0]
@@ -83,13 +83,14 @@ normalizer_search:
 # Optimal mapping — used by the standard full linear-probing scripts
 # =============================================================================
 # Fill these values after inspecting the multi-checkpoint normalizer search.
-# null -> fallback to the full model range: p0=0.0, p1=1.0.
+# The reported runs use the full model range for every ROI (p0=0.0, p1=1.0);
+# a null value would fall back to that same full range.
 # =============================================================================
 optimal_mapping:
-  ofc: {p0: null, p1: null}
-  fip: {p0: null, p1: null}
+  ofc: {p0: 0.0, p1: 1.0}
+  fip: {p0: 0.0, p1: 1.0}
   lc:  {p0: 0.0, p1: 1.0}
-  sc:  {p0: null, p1: null}
+  sc:  {p0: 0.0, p1: 1.0}
 
 
 # =============================================================================

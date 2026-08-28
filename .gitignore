@@ -4,6 +4,11 @@
 # =============================================================================
 /3DINO/
 /Neuro-JEPA/
+/point-m2ae/
+
+# Local Point-M2AE working directory (checkpoints, compiled CUDA extensions,
+# experiment results) — being refactored into linear_prober; never committed.
+/point_m2ae/
 
 # =============================================================================
 # Python

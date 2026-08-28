@@ -8,7 +8,7 @@ general-purpose 3D foundation models on cortical sulcal morphology.
 | Component | Role |
 |---|---|
 | [`sulcus-aware-3dino/`](sulcus-aware-3dino/) | **Pretraining** — self-supervised (DINO/iBOT) continual pretraining of the public 3DINO-ViT backbone on binary 3D sulcal skeletons: isotropic and anisotropic crop geometries, density-aware masking, PEFT (LoRA, LoRA + unfrozen last block, full fine-tuning). Built as an *extension layer* over an unmodified upstream [3DINO](https://github.com/AICONSlab/3DINO) clone. |
-| [`linear_prober/`](linear_prober/) | **Evaluation** — zero-shot linear probing of frozen 3D encoders (3DINO-ViT, SAM-Med3D, VISTA3D, BrainSegFounder, DINOv3) on two modalities (binary sulcal skeletons, MRI crops), under one shared, leakage-guarded protocol. |
+| [`linear_prober/`](linear_prober/) | **Evaluation** — zero-shot linear probing of frozen 3D encoders (3DINO-ViT, SAM-Med3D, VISTA3D, BrainSegFounder, DINOv3, Point-M2AE) on two modalities (binary sulcal skeletons, MRI crops), under one shared, leakage-guarded protocol. |
 
 Upstream model repositories and checkpoints are **not** redistributed here; each
 component's README explains what to clone or download and how to point the
