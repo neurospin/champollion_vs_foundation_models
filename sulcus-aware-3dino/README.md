@@ -17,8 +17,8 @@ adds, on top of frozen 3DINO:
 
 - a sulcal data pipeline (single-`.npy` datasets, MONAI-based 3D augmentations,
   density-aware "non-empty patch" masking) — isotropic and anisotropic variants;
-- a parameter-efficient fine-tuning layer (LoRA / LoRA+last-block / additional
-  blocks / full fine-tune) injected in-place into the frozen backbone;
+- a parameter-efficient fine-tuning layer (LoRA / LoRA + unfrozen last block /
+  full fine-tune) injected in-place into the frozen backbone;
 - a thin `SSLMetaArch` subclass and two training entry points that wire the above
   to 3DINO's SSL objective.
 
@@ -113,9 +113,14 @@ The teacher checkpoint is saved to
 
 ### PEFT
 
-Full fine-tuning (`peft.method=full_finetune`) is the default. LoRA and adapter
-variants are available through the configs in
-[`configs/train/`](configs/train/) (`peft_lora_*`, `peft_additional_blocks_ofc`).
+Full fine-tuning (`peft.method=full_finetune`) is the default. Two LoRA variants
+were also evaluated, selected through the configs in
+[`configs/train/`](configs/train/):
+
+- `peft_lora_allblocks_r16.yaml` — LoRA adapters (rank 16) on the fused qkv of
+  every transformer block; only the LoRA parameters are trainable.
+- `peft_lora_last_block.yaml` — the same LoRA adapters **plus** a fully
+  unfrozen last transformer block (`peft.method=lora_last_block`).
 
 ## Tests
 

@@ -7,7 +7,7 @@ general-purpose 3D foundation models on cortical sulcal morphology.
 
 | Component | Role |
 |---|---|
-| [`sulcus-aware-3dino/`](sulcus-aware-3dino/) | **Pretraining** — self-supervised (DINO/iBOT) continual pretraining of the public 3DINO-ViT backbone on binary 3D sulcal skeletons: isotropic and anisotropic crop geometries, density-aware masking, PEFT (LoRA / additional blocks / full fine-tuning). Built as an *extension layer* over an unmodified upstream [3DINO](https://github.com/AICONSlab/3DINO) clone. |
+| [`sulcus-aware-3dino/`](sulcus-aware-3dino/) | **Pretraining** — self-supervised (DINO/iBOT) continual pretraining of the public 3DINO-ViT backbone on binary 3D sulcal skeletons: isotropic and anisotropic crop geometries, density-aware masking, PEFT (LoRA, LoRA + unfrozen last block, full fine-tuning). Built as an *extension layer* over an unmodified upstream [3DINO](https://github.com/AICONSlab/3DINO) clone. |
 | [`linear_prober/`](linear_prober/) | **Evaluation** — zero-shot linear probing of frozen 3D encoders (3DINO-ViT, SAM-Med3D, VISTA3D, BrainSegFounder, DINOv3) on two modalities (binary sulcal skeletons, MRI crops), under one shared, leakage-guarded protocol. |
 
 Upstream model repositories and checkpoints are **not** redistributed here; each
@@ -50,7 +50,7 @@ of 3DINO at the pinned commit.
 | iBOT masking restricted to non-empty (sulcus-containing) patches | [`sulcus-aware-3dino/.../data/masking_non_empty.py`](sulcus-aware-3dino/sulcus_aware_3DINO/data/masking_non_empty.py) |
 | Anatomy-preserving augmentations: small rigid affines only, no flips / 90° rotations | [`sulcus-aware-3dino/.../data/augmentations.py`](sulcus-aware-3dino/sulcus_aware_3DINO/data/augmentations.py) |
 | Anisotropic (non-cubic) crop geometry for elongated sulci | [`.../data/*_anisotropic.py`](sulcus-aware-3dino/sulcus_aware_3DINO/data/), [`.../training/meta_arch_anisotropic.py`](sulcus-aware-3dino/sulcus_aware_3DINO/training/meta_arch_anisotropic.py) |
-| PEFT: LoRA on the fused qkv, additional blocks, full fine-tuning | [`sulcus-aware-3dino/.../models/peft/`](sulcus-aware-3dino/sulcus_aware_3DINO/models/peft/) |
+| PEFT: LoRA on the fused qkv (optionally with the last transformer block unfrozen), full fine-tuning | [`sulcus-aware-3dino/.../models/peft/`](sulcus-aware-3dino/sulcus_aware_3DINO/models/peft/) |
 | Isotropic upscale + centered padding, identical at training and probing time | [`.../data/sulcal_preprocessing.py`](sulcus-aware-3dino/sulcus_aware_3DINO/data/sulcal_preprocessing.py), [`linear_prober/.../skeleton/preprocessor.py`](linear_prober/linear_prober/skeleton/preprocessor.py) |
 | Pre-stratified folds, test split touched once, subject-level leakage guard | [`linear_prober/.../core/cross_validation.py`](linear_prober/linear_prober/core/cross_validation.py) |
 | One shared evaluation engine for every encoder (fair comparison) | [`linear_prober/.../core/`](linear_prober/linear_prober/core/) |
