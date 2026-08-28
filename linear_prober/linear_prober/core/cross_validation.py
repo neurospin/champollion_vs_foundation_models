@@ -7,7 +7,10 @@ MRI crops) and follows the CHAMPOLLION V1 convention:
     :class:`~sklearn.model_selection.GridSearchCV` is deliberately not used
     because it would re-shuffle the fold assignment.
   - hyperparameters are selected by manual k-fold CV on the ``train_val`` split;
-  - the ``test`` split is touched exactly once, after selection.
+  - the ``test`` split is touched exactly once, after selection;
+  - splits and folds must be *subject-level*: :func:`split_tv_test` raises if a
+    subject has volumes in both ``train_val`` and ``test``, or spans several CV
+    folds — the leakage guard for subjects contributing multiple volumes.
 """
 
 from __future__ import annotations
@@ -16,6 +19,42 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+
+
+def _validate_subject_level_split(
+    subjects: np.ndarray,
+    folds: np.ndarray,
+    tv_mask: np.ndarray,
+    test_mask: np.ndarray,
+) -> None:
+    """Raise on subject-level leakage between splits or across CV folds.
+
+    When a subject contributes several volumes, the protocol is leakage-free
+    only if (a) no subject has volumes on both sides of the train_val/test
+    split and (b) within ``train_val`` each subject sits in exactly one fold —
+    otherwise the same subject appears on both the fit and validation sides of
+    a CV iteration during hyperparameter selection.
+    """
+    subjects = subjects.astype(str)
+
+    overlap = sorted(set(subjects[tv_mask]) & set(subjects[test_mask]))
+    if overlap:
+        raise ValueError(
+            f"Subject-level leakage: {len(overlap)} subject(s) have volumes in "
+            f"both train_val and test (e.g. {overlap[:5]}). The master-table "
+            "split must be subject-level."
+        )
+
+    folds_of: Dict[str, set] = {}
+    for subject, fold in zip(subjects[tv_mask], folds[tv_mask]):
+        folds_of.setdefault(subject, set()).add(int(fold))
+    spanning = sorted(s for s, f in folds_of.items() if len(f) > 1)
+    if spanning:
+        raise ValueError(
+            f"Subject-level leakage: {len(spanning)} train_val subject(s) are "
+            f"assigned to more than one CV fold (e.g. {spanning[:5]}). The "
+            "master-table fold assignment must be subject-level."
+        )
 
 
 def split_tv_test(
@@ -29,10 +68,24 @@ def split_tv_test(
     Feature arrays are cast to ``float32`` and folds to ``int64``; label dtype
     is left untouched so the caller can cast per task (int for classification,
     float for regression).
+
+    Raises:
+        KeyError: if the feature dict carries no ``subjects`` array — the
+            subject-level leakage guard is mandatory.
+        ValueError: if the split is not subject-level (a subject with volumes
+            in both ``train_val`` and ``test``, or spanning several CV folds).
     """
     splits = data["splits"].astype(str)
     tv_mask = splits == "train_val"
     test_mask = splits == "test"
+
+    if "subjects" not in data:
+        raise KeyError(
+            "split_tv_test: feature dict has no 'subjects' array, so the "
+            "subject-level leakage guard cannot run. Re-extract the feature "
+            "cache (extractors store subjects alongside features)."
+        )
+    _validate_subject_level_split(data["subjects"], data["folds"], tv_mask, test_mask)
 
     features_tv = data["features"][tv_mask].astype(np.float32)
     labels_tv = data["labels"][tv_mask]

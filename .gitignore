@@ -1,10 +1,9 @@
 # =============================================================================
-# 3DINO_adapted — NOT published yet.
-# It is a derivative of 3DINO (CC BY-NC-ND 4.0, "NoDerivatives"); distributing
-# the modified version requires permission from the 3DINO authors. Excluded
-# from the repository until that is resolved.
+# External upstream clones — installed separately (see the sub-repo READMEs),
+# never committed here.
 # =============================================================================
-/3DINO_adapted/
+/3DINO/
+/Neuro-JEPA/
 
 # =============================================================================
 # Python
@@ -32,12 +31,6 @@ dist/
 *.pt
 /linear_prober/data/
 /linear_prober/outputs/
-/3DINO_adapted/data_hcp/
-/3DINO_adapted/datalists/
-/3DINO_adapted/weights/
-/3DINO_adapted/logs/
-/3DINO_adapted/logs_cingulate/
-/3DINO_adapted/outputs/
 tmp/
 
 # =============================================================================
@@ -49,5 +42,3 @@ tmp/
 *~
 .idea/
 .vscode/
-3DINO/
-3DINO/

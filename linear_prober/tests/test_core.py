@@ -95,6 +95,35 @@ def test_split_tv_test_partitions_correctly():
     assert len(f_tv) + len(f_te) == len(data["features"])
 
 
+def test_split_tv_test_rejects_subject_in_both_splits():
+    # A subject with volumes on both sides of the train_val/test frontier
+    # would leak test information into training.
+    data = _make_classification()
+    subjects = data["subjects"].copy()
+    subjects[-1] = subjects[0]  # row 0 is train_val, last row is test
+    data["subjects"] = subjects
+    with pytest.raises(ValueError, match="both train_val and test"):
+        split_tv_test(data)
+
+
+def test_split_tv_test_rejects_subject_spanning_folds():
+    # Within train_val, a subject sitting in two folds is on both the fit and
+    # validation sides of a CV iteration during hyperparameter selection.
+    data = _make_classification()
+    subjects = data["subjects"].copy()
+    subjects[1] = subjects[0]  # rows 0 and 1 are train_val, folds 0 and 1
+    data["subjects"] = subjects
+    with pytest.raises(ValueError, match="more than one CV fold"):
+        split_tv_test(data)
+
+
+def test_split_tv_test_requires_subjects():
+    data = _make_classification()
+    del data["subjects"]
+    with pytest.raises(KeyError, match="subjects"):
+        split_tv_test(data)
+
+
 # =============================================================================
 # Task registry
 # =============================================================================
