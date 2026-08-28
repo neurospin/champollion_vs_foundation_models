@@ -117,6 +117,21 @@ Full fine-tuning (`peft.method=full_finetune`) is the default. LoRA and adapter
 variants are available through the configs in
 [`configs/train/`](configs/train/) (`peft_lora_*`, `peft_additional_blocks_ofc`).
 
+## Tests
+
+A synthetic smoke test exercises the self-contained sulcal numerics
+(density-aware masking, geometric preprocessing, multi-crop collate) with no
+neuroimaging data, no checkpoint and no GPU:
+
+```shell
+pip install numpy pytest torch
+pytest tests/
+```
+
+`tests/check_import_wiring.py` additionally verifies — without executing
+anything — that every `dinov2.*` import resolves against the pinned upstream
+clone. Both run in CI on every push.
+
 ## Licensing
 
 The original code in this repository is released under the **MIT** license — see

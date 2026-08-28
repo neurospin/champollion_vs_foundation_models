@@ -36,6 +36,26 @@ jobs:
       - name: Byte-compile all sources
         run: python -m compileall -q sulcus_aware_3DINO train.py train_anisotropic.py
 
+  # The extension-layer contract: every `dinov2.*` import in this package must
+  # resolve against the frozen upstream 3DINO at the pinned commit. Pure-stdlib
+  # AST check — nothing is executed, nothing is pip-installed.
+  import-wiring:
+    name: import wiring vs pinned 3DINO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fetch upstream 3DINO at the pinned commit
+        run: |
+          git init ../3DINO
+          git -C ../3DINO remote add origin https://github.com/AICONSlab/3DINO.git
+          git -C ../3DINO fetch --depth 1 origin 85bd4435c1b2ada41cd34cd15cad17c4d3c88d89
+          git -C ../3DINO checkout --quiet FETCH_HEAD
+      - name: Check every dinov2.* import resolves in the clone
+        run: python tests/check_import_wiring.py --clone ../3DINO
+
   # Synthetic smoke test of the self-contained sulcal numerics (density masking,
   # geometric preprocessing, multi-crop collate) on random tensors. Needs only
   # numpy/torch — no neuroimaging data, no checkpoints, no GPU, no 3DINO clone.
