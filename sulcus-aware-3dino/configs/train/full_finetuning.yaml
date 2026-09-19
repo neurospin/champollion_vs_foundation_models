@@ -1,4 +1,4 @@
-# dinov2/configs/train/full_finetuning.yaml
+# configs/train/full_finetuning.yaml
 #
 # Full fine-tuning configuration for sulcal SSL.
 # This file only contains differences from ssl3d_default_config.yaml.

@@ -1,10 +1,10 @@
-# dinov2/configs/train/full_finetuning_anisotropic_cingulate.yaml
+# configs/train/full_finetuning_anisotropic_cingulate.yaml
 #
 # Dedicated full fine-tuning configuration for anisotropic continual
-# pretraining on the UK Biobank anterior cingulate sulcal skeletons.
+# pretraining on anterior cingulate sulcal skeletons.
 #
 # This file is merged with:
-#   dinov2/configs/ssl3d_default_config_anisotropic.yaml
+#   configs/ssl3d_default_config_anisotropic.yaml
 #
 # Spatial convention:
 #   source volume     : [18, 73, 57]

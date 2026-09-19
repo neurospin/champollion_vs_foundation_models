@@ -1,4 +1,4 @@
-# dinov2/configs/train/peft_lora_last_block.yaml
+# configs/train/peft_lora_last_block.yaml
 #
 # LoRA + last transformer block fine-tuning for sulcal SSL.
 # This file only contains differences from ssl3d_default_config.yaml.
@@ -23,9 +23,6 @@ peft:
   r: 16
   alpha: 32
   dropout: 0.0
-  target_modules:
-    - "qkv"
-  scope: "all_blocks"
 
 train:
   dataset_path: "data/pretrain_sulcal_datalist.json"

@@ -5,7 +5,7 @@
 #
 # Experiment configurations are merged on top of this file, for example:
 #
-#   dinov2/configs/train/full_finetuning_anisotropic_cingulate.yaml
+#   configs/train/full_finetuning_anisotropic_cingulate.yaml
 #
 # Configuration resolution order:
 #
@@ -14,7 +14,7 @@
 #   3. command-line overrides
 #
 # runtime_geometry is not defined manually here. It is generated and
-# validated by dinov2/utils/config_anisotropic.py from:
+# validated by sulcus_aware_3DINO/training/setup_anisotropic.py from:
 #
 #   student.patch_size
 #   crops.backbone_reference_size

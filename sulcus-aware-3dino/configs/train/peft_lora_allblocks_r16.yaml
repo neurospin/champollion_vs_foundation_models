@@ -1,4 +1,4 @@
-# dinov2/configs/train/peft_lora_allblocks.yaml
+# configs/train/peft_lora_allblocks_r16.yaml
 #
 # Loading strategy:
 # 1. pretrained_weights loads W0 into raw student/teacher backbones before PEFT injection.
@@ -17,9 +17,6 @@ peft:
   r: 16
   alpha: 32
   dropout: 0.0
-  target_modules:
-    - "qkv"
-  scope: "all_blocks"
 
 train:
   dataset_path: "data/pretrain_sulcal_datalist.json"
